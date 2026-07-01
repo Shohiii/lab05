@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.10)
+project(solver VERSION 1.0.0)
+
+set(CMAKE_CXX_STANDARD 17)
+
+add_executable(solver main.cpp)
+install(TARGETS solver DESTINATION bin)
+
+include(InstallRequiredSystemLibraries)
+set(CPACK_PACKAGE_CONTACT "as50503as@gmail.com")
+set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Solver application package")
+
+set(CPACK_GENERATOR "TGZ;ZIP;DEB;RPM")
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_DEBIAN_PACKAGE_PREDEPENDS "cmake >= 3.0")
+
+include(CPack)
