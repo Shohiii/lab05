@@ -1,0 +1,6 @@
+build/
+coverage.info
+coverage_filtered.info
+*.gcda
+*.gcno
+*.gcov

@@ -1,20 +1,28 @@
 cmake_minimum_required(VERSION 3.10)
-project(solver VERSION 1.0.0)
+
+project(lab05 VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(solver main.cpp)
-install(TARGETS solver DESTINATION bin)
+option(BUILD_TESTS "Build tests" ON)
+option(ENABLE_COVERAGE "Enable coverage" ON)
 
-include(InstallRequiredSystemLibraries)
-set(CPACK_PACKAGE_CONTACT "as50503as@gmail.com")
-set(CPACK_PACKAGE_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${PROJECT_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${PROJECT_VERSION_PATCH})
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Solver application package")
+if(ENABLE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(--coverage)
+    add_link_options(--coverage)
+endif()
 
-set(CPACK_GENERATOR "TGZ;ZIP;DEB;RPM")
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-set(CPACK_DEBIAN_PACKAGE_PREDEPENDS "cmake >= 3.0")
+add_subdirectory(banking)
 
-include(CPack)
+if(BUILD_TESTS)
+    enable_testing()
+
+    add_subdirectory(third-party/gtest)
+    add_subdirectory(tests)
+endif()
+
+# Compatibility of GoogleTest 1.8.1 with modern GCC.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_compile_options(gtest PRIVATE -Wno-error=maybe-uninitialized)
+endif()
