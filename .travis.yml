@@ -7,8 +7,9 @@ compiler:
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install -y cmake gcovr
+  - sudo apt-get install -y cmake gcovr python3-pip
   - pip3 install --user cpp-coveralls
+  - export PATH="$HOME/.local/bin:$PATH"
 
 script:
   - cmake -S . -B build -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
