@@ -8,11 +8,12 @@
 
 1. Создать `CMakeLists.txt` для библиотеки `banking`.
 2. Создать модульные тесты для классов `Transaction` и `Account`.
-
    * Использовать mock-объекты.
    * Покрытие кода должно составлять 100%.
-3. Настроить сборочную процедуру на Travis CI.
+3. Настроить процедуру автоматической сборки и тестирования в CI.
 4. Настроить Coveralls.io.
+
+> Вместо Travis CI используется GitHub Actions, как в принятом варианте лабораторной работы.
 
 ---
 
@@ -44,13 +45,27 @@ target_include_directories(banking PUBLIC
 )
 ```
 
-Команда `add_library` собирает файлы `Account.cpp` и `Transaction.cpp` в библиотеку `banking`.
+---
+
+## 2. Подключение GoogleTest как git submodule
+
+GoogleTest/GoogleMock подключён как git submodule:
+
+```text
+third-party/gtest
+```
+
+Проверка:
+
+```bash
+git submodule status
+```
+
+Используется GoogleTest `release-1.8.1`.
 
 ---
 
-## 2. Корневой `CMakeLists.txt`
-
-В корневом `CMakeLists.txt` подключается библиотека `banking`, GoogleTest/GoogleMock и тесты.
+## 3. Корневой `CMakeLists.txt`
 
 ```cmake
 cmake_minimum_required(VERSION 3.10)
@@ -82,15 +97,24 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 ```
 
-GoogleTest подключён как git submodule:
+Файл `tests/CMakeLists.txt`:
 
-```text
-third-party/gtest
+```cmake
+add_executable(check
+    bank_test.cpp
+)
+
+target_link_libraries(check
+    banking
+    gmock_main
+)
+
+add_test(NAME banking_tests COMMAND check)
 ```
 
 ---
 
-## 3. Модульные тесты `Account` и `Transaction`
+## 4. Модульные тесты `Account` и `Transaction`
 
 Тесты находятся в файле:
 
@@ -101,8 +125,6 @@ tests/bank_test.cpp
 Для тестирования используются GoogleTest и GoogleMock.
 
 ### Mock-объекты
-
-Для проверки виртуальных методов созданы mock-классы.
 
 ```cpp
 class MockAccount : public Account {
@@ -118,7 +140,7 @@ class MockTransaction : public Transaction {
 };
 ```
 
-Пример использования mock-объекта `MockAccount`:
+Пример использования `MockAccount`:
 
 ```cpp
 TEST(AccountTest, MockObjectIsUsed) {
@@ -131,7 +153,7 @@ TEST(AccountTest, MockObjectIsUsed) {
 }
 ```
 
-Пример использования mock-объекта `MockTransaction`:
+Пример использования `MockTransaction`:
 
 ```cpp
 TEST(TransactionTest, SuccessfulTransaction) {
@@ -149,85 +171,22 @@ TEST(TransactionTest, SuccessfulTransaction) {
 }
 ```
 
-### Тесты класса `Account`
-
 Проверяются:
-
-* создание счёта и получение `id` и баланса;
-* запрет изменения баланса без блокировки;
-* изменение баланса после `Lock()`;
-* исключение при повторном `Lock()`;
-* работа `Unlock()`;
-* использование mock-объекта.
-
-Пример проверки запрета изменения баланса без блокировки:
-
-```cpp
-TEST(AccountTest, ChangeBalanceWithoutLockThrows) {
-  Account account(1, 100);
-
-  EXPECT_THROW(account.ChangeBalance(50), std::runtime_error);
-}
-```
-
-Пример изменения баланса после блокировки:
-
-```cpp
-TEST(AccountTest, ChangeBalanceAfterLock) {
-  Account account(1, 100);
-
-  account.Lock();
-  account.ChangeBalance(50);
-
-  EXPECT_EQ(account.GetBalance(), 150);
-
-  account.Unlock();
-}
-```
-
-### Тесты класса `Transaction`
-
-Проверяются:
-
-* значение комиссии по умолчанию;
-* изменение комиссии;
-* перевод между счетами с одинаковым `id`;
-* отрицательная сумма;
-* слишком маленькая сумма;
+* создание `Account`;
+* изменение баланса только после блокировки;
+* повторный `Lock()`;
+* `Unlock()`;
+* комиссия `Transaction`;
+* одинаковые `id`;
+* отрицательная и слишком маленькая сумма;
 * слишком большая комиссия;
 * успешная транзакция;
-* неуспешное списание и откат операции;
-* настоящий вызов `SaveToDataBase()`.
-
-Пример проверки одинакового `id`:
-
-```cpp
-TEST(TransactionTest, SameAccountThrows) {
-  Account from(1, 500);
-  Account to(1, 500);
-  Transaction transaction;
-
-  EXPECT_THROW(transaction.Make(from, to, 100), std::logic_error);
-}
-```
-
-Пример проверки слишком маленькой суммы:
-
-```cpp
-TEST(TransactionTest, TooSmallSumThrows) {
-  Account from(1, 500);
-  Account to(2, 500);
-  Transaction transaction;
-
-  EXPECT_THROW(transaction.Make(from, to, 50), std::logic_error);
-}
-```
+* откат при неуспешном списании;
+* вызов `SaveToDataBase()`.
 
 ---
 
-## 4. Сборка проекта
-
-Конфигурация проекта:
+## 5. Сборка проекта
 
 ```bash
 cmake -S . -B build \
@@ -235,8 +194,6 @@ cmake -S . -B build \
   -DENABLE_COVERAGE=ON \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 ```
-
-Сборка:
 
 ```bash
 cmake --build build -j2
@@ -251,9 +208,7 @@ cmake --build build -j2
 
 ---
 
-## 5. Запуск тестов
-
-Запуск через CTest:
+## 6. Запуск тестов
 
 ```bash
 ctest --test-dir build --output-on-failure
@@ -269,7 +224,7 @@ Test project /home/nikita/lab05/build
 100% tests passed, 0 tests failed out of 1
 ```
 
-Также тесты были запущены напрямую:
+Прямой запуск:
 
 ```bash
 ./build/tests/check
@@ -278,7 +233,6 @@ Test project /home/nikita/lab05/build
 Результат:
 
 ```text
-Running main() from gmock_main.cc
 [==========] Running 15 tests from 2 test cases.
 [----------] 6 tests from AccountTest
 ...
@@ -288,7 +242,7 @@ Running main() from gmock_main.cc
 [  PASSED  ] 15 tests.
 ```
 
-Во время теста настоящего `SaveToDataBase()` получен вывод:
+Во время вызова настоящего `SaveToDataBase()`:
 
 ```text
 1 send to 2 $100
@@ -296,27 +250,18 @@ Balance 1 is 500
 Balance 2 is 499
 ```
 
-Всего выполнено 15 тестов, все тесты завершились успешно.
-
 ---
 
-## 6. Покрытие кода
+## 7. Покрытие кода
 
-Для проверки покрытия использована утилита `gcovr`.
-
-Перед построением отчёта старые данные покрытия удаляются:
+Перед построением отчёта:
 
 ```bash
 find build -name '*.gcda' -delete
-```
-
-После этого тесты запускаются заново:
-
-```bash
 ctest --test-dir build --output-on-failure
 ```
 
-Команда построения отчёта:
+Проверка покрытия:
 
 ```bash
 gcovr \
@@ -327,7 +272,7 @@ gcovr \
   --txt
 ```
 
-Полученный результат:
+Результат:
 
 ```text
 ------------------------------------------------------------------------------
@@ -345,76 +290,55 @@ TOTAL                                         49      49   100%
 ------------------------------------------------------------------------------
 ```
 
-Итог:
+Итог: **49 из 49 строк, 100%**.
+
+---
+
+## 8. CI: GitHub Actions
+
+Вместо Travis CI используется GitHub Actions.
+
+Файл:
 
 ```text
-49 / 49 строк = 100%
+.github/workflows/tests.yml
 ```
 
-Требование о 100% покрытии исходного кода библиотеки `banking` выполнено.
+Workflow выполняет:
+1. checkout репозитория вместе с submodule;
+2. установку CMake, GCC и `gcovr`;
+3. конфигурацию проекта;
+4. сборку;
+5. запуск тестов;
+6. проверку покрытия.
+
+После push workflow `Lab05 Tests and Coverage` успешно выполнился в разделе **Actions** репозитория.
 
 ---
 
-## 7. Travis CI
+## 9. Coveralls.io
 
-Для автоматической сборки проекта создан файл `.travis.yml`.
-
-```yaml
-language: cpp
-
-dist: focal
-
-compiler:
-  - gcc
-
-before_install:
-  - sudo apt-get update
-  - sudo apt-get install -y cmake gcovr
-  - pip3 install --user cpp-coveralls
-
-script:
-  - cmake -S . -B build -DBUILD_TESTS=ON -DENABLE_COVERAGE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-  - cmake --build build -j2
-  - ctest --test-dir build --output-on-failure
-  - ./build/tests/check
-  - gcovr --root . --filter 'banking/.*' --exclude 'third-party/.*' --exclude 'tests/.*' --txt
-
-after_success:
-  - coveralls --root . -E ".*third-party.*" -E ".*tests.*" -E ".*CMakeFiles.*"
-```
-
-Travis CI выполняет:
-
-1. установку необходимых зависимостей;
-2. конфигурацию проекта через CMake;
-3. сборку библиотеки и тестов;
-4. запуск CTest;
-5. запуск тестового приложения;
-6. проверку покрытия;
-7. отправку покрытия в Coveralls после успешной сборки.
-
----
-
-## 8. Coveralls.io
-
-Для отправки статистики покрытия используется `cpp-coveralls`.
-
-После успешной сборки выполняется команда:
+Для Coveralls в GitHub Actions создаётся LCOV-файл:
 
 ```bash
-coveralls --root . \
-  -E ".*third-party.*" \
-  -E ".*tests.*" \
-  -E ".*CMakeFiles.*"
+gcovr \
+  --root . \
+  --filter 'banking/.*' \
+  --exclude 'third-party/.*' \
+  --exclude 'tests/.*' \
+  --lcov coverage.info
 ```
 
-Из статистики покрытия исключаются:
+После этого файл отправляется в Coveralls действием:
 
-* GoogleTest и GoogleMock;
-* тестовые файлы;
-* служебные файлы CMake.
-
-Благодаря этому Coveralls должен учитывать непосредственно исходный код библиотеки `banking`.
+```yaml
+- name: Upload coverage to Coveralls
+  uses: coverallsapp/github-action@v2
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    file: coverage.info
+    format: lcov
+```
 
 ---
 
@@ -423,10 +347,11 @@ coveralls --root . \
 В лабораторной работе:
 
 * создан `CMakeLists.txt` для библиотеки `banking`;
-* написаны модульные тесты для `Account`;
-* написаны модульные тесты для `Transaction`;
+* GoogleTest/GoogleMock подключён как git submodule;
+* написаны тесты для `Account` и `Transaction`;
 * использованы mock-объекты;
 * успешно пройдены 15 тестов;
 * получено покрытие 100% — 49 из 49 строк;
-* создан файл конфигурации Travis CI;
-* настроена отправка покрытия в Coveralls.
+* вместо Travis CI используется GitHub Actions;
+* workflow GitHub Actions успешно выполняется;
+* предусмотрена отправка покрытия в Coveralls.
