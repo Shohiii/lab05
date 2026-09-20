@@ -1,5 +1,9 @@
 # Лабораторная работа №5
 
+репозиторий: https://github.com/Shohiii/lab05
+
+условие лабораторной работы: https://github.com/tp-labs/lab05
+
 ## Задание
 
 1. Создать `CMakeLists.txt` для библиотеки `banking`.
